@@ -18,6 +18,7 @@ from refined.inference.processor import Refined
 from refined.training.fine_tune.fine_tune_args import FineTuningArgs, parse_fine_tuning_args
 from refined.training.train.training_args import TrainingArgs
 from refined.utilities.general_utils import get_logger
+import dataquality as dq
 
 LOG = get_logger(name=__name__)
 
@@ -104,6 +105,8 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
     model = refined.model
     best_f1 = 0.0
     for epoch_num in trange(fine_tuning_args.epochs):
+        # 🔭🌕 Galileo logging
+        dq.set_epoch(epoch_num)
         torch.cuda.empty_cache()
         optimizer.zero_grad()
         model.train()
@@ -112,6 +115,9 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
             LOG.info(f"lr: {param_group['lr']}")
         total_loss = 0.0
         for step, batch in tqdm(enumerate(training_dataloader), total=len(training_dataloader)):
+            # 🔭🌕 Galileo logging
+            dq.set_split("training")
+
             batch = batch.to(fine_tuning_args.device)
             with autocast():
                 output = model(batch=batch)
@@ -152,6 +158,8 @@ def run_checkpoint_eval_and_save(best_f1: float, evaluation_dataset_name_to_docs
                                  scaler: GradScaler,
                                  scheduler):
     torch.cuda.empty_cache()
+    # 🔭🌕 Galileo logging
+    dq.set_split("validation")
     evaluation_metrics = evaluate(refined=refined,
                                   evaluation_dataset_name_to_docs=evaluation_dataset_name_to_docs,
                                   el=fine_tuning_args.el,  # only evaluate EL when training EL

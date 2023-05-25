@@ -63,6 +63,12 @@ class LookupsInferenceOnly:
         with open(resource_to_file_path["class_to_idx"], "r") as f:
             self.class_to_idx = json.load(f)
 
+        with open(resource_to_file_path["entity_label_subset"], "r") as f:
+            label_subset = json.load(f)
+            # Ensure that the tasks are sorted!
+            self.label_subset_arr = np.sort(np.array(label_subset))
+            self.label_subset_set = set(label_subset)
+
         self.index_to_class = {y: x for x, y in self.class_to_idx.items()}
         self.classes = list(self.class_to_idx.keys())
         self.max_num_classes_per_ent = self.qcode_idx_to_class_idx.shape[1]

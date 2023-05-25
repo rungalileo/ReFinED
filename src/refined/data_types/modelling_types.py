@@ -34,10 +34,12 @@ class BatchElementToken:
 class BatchElementTns(NamedTuple):
     """Batch element as a tuple of tensors. This tuple is for a single `BatchElement`."""
 
-    token_id_values: Tensor = None  # shape = (seq_len, )
+    token_id_values: Tensor = None # shape = (seq_len, )
     token_acc_sum_values: Optional[Tensor] = None  # shape = (seq_len, )
     entity_mask_values: Optional[Tensor] = None  # shape = (ent_len, )
     class_target_values: Optional[Tensor] = None  # shape = (all_ent_len, max_num_classes_per_ent)
+    # Adding for Galileo
+    entity_ids: Optional[Tensor] = None  # shape = (all_ent_len, )
     attention_mask_values: Tensor = None  # shape = (seq_len, )
     token_type_values: Tensor = None  # shape = (seq_len, )
     candidate_target_values: Optional[Tensor] = None  # shape = (ent_len, max_candidates + 1)
@@ -65,6 +67,7 @@ class BatchedElementsTns(NamedTuple):
     token_acc_sum_values: Optional[Tensor] = None  # shape = (bs, seq_len)
     entity_mask_values: Optional[Tensor] = None  # shape = (bs, ent_len)
     class_target_values: Optional[Tensor] = None  # shape = (all_ent_len, max_num_classes_per_ent)
+    entity_ids: Optional[Tensor] = None  # shape = (bs, all_ent_len)
     attention_mask_values: Tensor = None  # shape = (bs, seq_len)
     token_type_values: Tensor = None  # shape = (bs, seq_len)
     candidate_target_values: Optional[Tensor] = None  # shape = (bs, ent_len, max_candidates + 1)
@@ -109,7 +112,7 @@ class ModelReturn(NamedTuple):
 @dataclass
 class BatchElement:
     """
-    Represents part of a document (`Doc`) that fits in single pass of a transformer model (< max_seq_len) as a
+     (< max_seq_len) as a
     singleton batch. If the document is short then this object represents the full document.
     """
 
@@ -124,6 +127,9 @@ class BatchElement:
     # spans used for entity typing and entity disambiguation (could be partial labels)
     spans: Optional[List[Span]]
 
+    # Unique id for each span - critical for Galileo
+    span_ids: Optional[List[int]]
+
     # text from original document (note: this is the full text of the document)
     text: str
 
@@ -131,6 +137,7 @@ class BatchElement:
     md_spans: Optional[List[Span]] = None
 
     def __post_init__(self):
+        # TODO LOOK INTO THIS - SHOULD BE ALREADY SORTED / Will ids be aligned!
         sort_spans(self.spans)
         sort_spans(self.md_spans)
 

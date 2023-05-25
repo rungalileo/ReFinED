@@ -61,3 +61,15 @@ Thumbs.db
 *.pyc
 *.cpython-37.pyc
 
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# General Aux Files and Folders
+fine_tuned_models/
+fine_tuned_models/

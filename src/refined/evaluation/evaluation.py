@@ -53,13 +53,22 @@ def process_annotated_document(
             if span.gold_entity is None or span.gold_entity.wikidata_entity_id is None:
                 nil_spans.add((span.text, span.start))
 
-    predicted_spans = refined.process_text(
-        text=doc.text,
-        spans=doc.spans if not el else None,
+    # TODO BIG HACK!!!!
+    # Consider passing in the spans + span_ids manually!
+    # Allow for both el and ed evaluation!
+    predicted_spans = refined.custom_process_text(
+        doc,
         apply_class_check=apply_class_check,
         prune_ner_types=False,
         return_special_spans=return_special_spans  # only set to True if the dataset has special spans (e.g. dates)
     )
+    # predicted_spans = refined.process_text(
+    #     text=doc.text,
+    #     spans=doc.spans if not el else None,
+    #     apply_class_check=apply_class_check,
+    #     prune_ner_types=False,
+    #     return_special_spans=return_special_spans  # only set to True if the dataset has special spans (e.g. dates)
+    # )
 
     pred_spans = set()
     for span in predicted_spans:
@@ -315,6 +324,7 @@ def evaluate(evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
              print_errors: bool = True,
              return_special_spans: bool = True) -> Dict[str, Metrics]:
     dataset_name_to_metrics = dict()
+    # TODO Support both running el and ed evaluation!
     if el:
         LOG.info("Running entity linking evaluation")
         el_results = evaluate_on_datasets(

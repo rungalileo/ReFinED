@@ -3,6 +3,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+import numpy as np
+
 from refined.data_types.base_types import Token, Span
 from refined.data_types.modelling_types import BatchElementToken, BatchElement
 from refined.doc_preprocessing.preprocessor import Preprocessor
@@ -28,11 +30,15 @@ class Doc:
     # optional entity-mention spans to process (ET/ED) - can be partial e.g. hyperlinks.
     spans: Optional[List[Span]]
 
+    # Unique id for each span - critical for Galileo
+    span_ids: Optional[List[int]] = None
+
     # optional entity-mention spans to process (MD only) - so must be complete.
     md_spans: Optional[List[Span]] = None
 
     def __post_init__(self):
         if self.spans is not None:
+            # TODO LOOK INTO THIS!!! AND ALIGNMENT WITH IDS
             self.spans.sort(key=lambda x: x.start)
         if self.md_spans is not None:
             self.md_spans.sort(key=lambda x: x.start)
@@ -76,7 +82,8 @@ class Doc:
             md_spans: Optional[List[Span]] = None,
             backward_coref: bool = False,
             sample_k_candidates: Optional[int] = None,
-            doc_id: Optional[int] = None
+            doc_id: Optional[int] = None,
+            start_span_idx: Optional[int] = None
     ) -> "Doc":
         """
         Construct `Doc` from text with predetermined spans.
@@ -95,9 +102,14 @@ class Doc:
         """
         if doc_id is None:
             doc_id = random.randint(0, 2 ** 30)
+
+        span_ids = None
         if spans is not None:
             for span in spans:
                 span.doc_id = doc_id
+
+            # Create span_id
+            span_ids = list(np.arange(start_span_idx, start_span_idx + len(spans)))
         if md_spans is not None:
             for span in md_spans:
                 span.doc_id = doc_id
@@ -111,7 +123,7 @@ class Doc:
                 backward_coref=backward_coref,
                 sample_k_candidates=sample_k_candidates,
             )
-        return cls(text=text, spans=spans, tokens=tokens, md_spans=md_spans, doc_id=doc_id)
+        return cls(text=text, spans=spans, tokens=tokens, md_spans=md_spans, doc_id=doc_id, span_ids=span_ids)
 
     def to_batch_elements(
             self,
@@ -134,6 +146,7 @@ class Doc:
 
         self.spans.sort(key=lambda x: x.start)
         spans_queue: List[Span] = self.spans[:]
+        spans_id_queue: List[int] = self.span_ids[:]
 
         # if there are no spans return no training items
         if len(spans_queue) == 0:
@@ -146,6 +159,10 @@ class Doc:
         # current ent is the last ent discovered - initially set it to the first ent in page
         next_span: Optional[Span] = spans_queue.pop(0)
         current_span: Optional[Span] = None
+        # Mirror queue use for spans
+        next_span_id: Optional[int] = spans_id_queue.pop(0)
+        current_span_id: Optional[int] = None
+
         if override_max_seq is not None:
             max_seq = override_max_seq
         else:
@@ -156,6 +173,8 @@ class Doc:
         entity_pos: List[int] = []  # keeps track of which spans represent entities
         in_entity: bool = False  # keeps track of whether the for-loop has started but not finished reading an entity
         sent_spans: List[Span] = []  # keeps track of entities
+        # Track the span ids
+        sent_ids: List[int] = []  # keep track of span ids
 
         for idx, token in enumerate(self.tokens):
             # process tokens left-to-right
@@ -165,25 +184,30 @@ class Doc:
             if ((idx > (max_seq - 10)) and not in_entity) \
                     or (idx > (max_seq - 1)) \
                     or (max_mentions is not None and len(sent_spans) > max_mentions and not in_entity):
-                # chunk the page into `max_mentions` mention chunks
-                max_mention = (
-                        max([x.acc_sum for x in sent_tokens]) + 1
-                )  # determine max number of spans (inc. masks)
-                entity_mask = [
-                    1 if i in entity_pos else 0 for i in range(max_mention)
-                ]  # determine entities
-                batch_element = BatchElement(
-                    tokens=sent_tokens,
-                    entity_mask=entity_mask,
-                    spans=sent_spans,
-                    text=self.text,
-                    md_spans=self.md_spans,
-                    doc_id=self.doc_id
-                )
-                # add training item to list and set variables for next item
-                batch_elements.append(batch_element)
+                # Not sure if we need to do this, but check that there are spans!
+                if len(sent_spans) > 0:
+                    # chunk the page into `max_mentions` mention chunks
+                    max_mention = (
+                            max([x.acc_sum for x in sent_tokens]) + 1
+                    )  # determine max number of spans (inc. masks)
+                    entity_mask = [
+                        1 if i in entity_pos else 0 for i in range(max_mention)
+                    ]  # determine entities
+                    batch_element = BatchElement(
+                        tokens=sent_tokens,
+                        entity_mask=entity_mask,
+                        spans=sent_spans,
+                        text=self.text,
+                        md_spans=self.md_spans,
+                        doc_id=self.doc_id,
+                        span_ids=sent_ids
+                    )
+                    # add training item to list and set variables for next item
+                    batch_elements.append(batch_element)
+
                 sent_tokens = []
                 sent_spans = []
+                sent_ids = []
                 cumm_sum = 0
                 entity_pos = []
                 max_seq = (
@@ -196,18 +220,22 @@ class Doc:
             # [2] = is doc_start, and [0] is doc_start
             if next_span is not None and token.start >= next_span.start:
                 current_span = next_span
+                current_span_id = next_span_id
                 cumm_sum += 1
                 in_entity = True
 
                 # update the next entity to look for
                 if len(spans_queue) == 0:
                     next_span = None
+                    next_span_id = -1
                 else:
                     # if consecutive entities: skip the current entity to ensure distance between current and next is 1
                     # you have entered the (next) entity so set it to current and move next to next entity
                     if not next_span == current_span:
                         current_span = next_span
+                        current_span_id = next_span_id
                     next_span = spans_queue.pop(0)
+                    next_span_id = spans_id_queue.pop(0)
 
                 sent_tokens.append(
                     BatchElementToken(
@@ -220,6 +248,7 @@ class Doc:
                 )
                 entity_pos.append(cumm_sum)
                 sent_spans.append(current_span)
+                sent_ids.append(current_span_id)
                 # token has been processed move on to the next token
                 continue
 
@@ -259,7 +288,8 @@ class Doc:
             spans=sent_spans,
             text=self.text,
             md_spans=self.md_spans,
-            doc_id=self.doc_id
+            doc_id=self.doc_id,
+            span_ids=sent_ids
         )
         batch_elements.append(batch_element)
 

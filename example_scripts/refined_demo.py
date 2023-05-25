@@ -1,5 +1,10 @@
+import sys
+sys.path.append("src")
+
 from refined.data_types.base_types import Span
 from refined.inference.processor import Refined
+
+
 
 refined = Refined.from_pretrained(model_name='wikipedia_model_with_numbers',
                                   entity_set='wikipedia',

@@ -61,7 +61,8 @@ def mask_mentions(
         spans=batch_element.spans,
         text=batch_element.text,
         md_spans=batch_element.md_spans,
-        doc_id=batch_element.doc_id
+        doc_id=batch_element.doc_id,
+        span_ids=batch_element.span_ids
     )
 
 

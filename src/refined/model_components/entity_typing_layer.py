@@ -1,12 +1,23 @@
 from typing import Optional, Tuple
 
+import torch
 from torch import nn
 from torch import Tensor
+import dataquality as dq
+
+from refined.doc_preprocessing.preprocessor import Preprocessor, PreprocessorInferenceOnly
 
 
 class EntityTyping(nn.Module):
-    def __init__(self, dropout: float, num_classes: int, encoder_hidden_size: int):
+    def __init__(
+        self,
+        dropout: float,
+        num_classes: int,
+        encoder_hidden_size: int,
+        preprocessor: Optional[PreprocessorInferenceOnly] = None
+    ):
         super().__init__()
+        self.preprocessor = preprocessor
         self.dropout = nn.Dropout(dropout)  # not needed
         self.linear = nn.Linear(encoder_hidden_size, num_classes)
         self.init_weights()
@@ -24,7 +35,7 @@ class EntityTyping(nn.Module):
             module.bias.data.zero_()
 
     def forward(
-        self, mention_embeddings: Tensor, span_classes: Optional[Tensor] = None
+        self, mention_embeddings: Tensor, span_classes: Optional[Tensor] = None, entity_ids: Optional[Tensor] = None
     ) -> Tuple[Optional[Tensor], Tensor]:
         """
         Forward pass of Entity Typing layer.
@@ -42,6 +53,26 @@ class EntityTyping(nn.Module):
             # torch.nn.BCELoss is unsafe to autocast
             loss_function = nn.BCEWithLogitsLoss()
             loss = loss_function(logits, targets)
+
+            # 🔭🌕 Galileo logging
+            if self.preprocessor:
+                task_mask = self.preprocessor.lookups.label_subset_arr
+
+                # I think we need to detatch here
+                task_specific_logits = logits.detach()[:, task_mask]  # Shape = [batch, task_mask_shape]
+                task_specific_targets = targets.detach()[:, task_mask]
+                # Get the spans that actually have labels!
+                active_spans_mask = torch.where(torch.sum(task_specific_targets, dim=-1) > 0)[0]
+                if active_spans_mask.shape[0] != 0:
+                    task_specific_logits = task_specific_logits[active_spans_mask]
+                    mention_embeddings = mention_embeddings[active_spans_mask]
+                    entity_ids = entity_ids[active_spans_mask]
+
+                    dq.log_model_outputs(
+                        embs=mention_embeddings,
+                        logits=task_specific_logits,
+                        ids=entity_ids
+                    )
             return loss, logits.sigmoid()
 
         return None, logits.sigmoid()

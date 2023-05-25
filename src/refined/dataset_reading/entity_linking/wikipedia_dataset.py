@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import List, Optional, Iterator
+from typing import List, Optional, Iterator, Set
 
 import torch
 
@@ -49,7 +49,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
             add_main_entity: bool = True,
             rank: Optional[int] = None,  # used for DDP training (rank)
             size: Optional[int] = None,  # used for DDP training (world size)
-            return_docs: bool = False
+            return_docs: bool = False,
     ):
         """
         Constructs instance of Wikipedia dataset (should be used in conjunction with torch Dataloader).
@@ -82,8 +82,13 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
 
         if end is None:
             end = self.file_line_count
+        else: # To avoid the "massive" end index case
+            end = min(end, self.file_line_count)
+
         self.start = start
         self.end = end
+        self.num_samples = end - start
+
         self.num_workers = num_workers
 
         self.batch_size = batch_size
@@ -112,6 +117,8 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
             # workers prefetching at the same time
             self.prefetch = self.prefetch + worker_num * 97
 
+        entity_id_counter = 0
+
         with open(self.dataset_path, "r") as dataset_file:
             batch_elements = []
             for current_line_num, dataset_line in enumerate(dataset_file):
@@ -128,6 +135,9 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                     # handles multiple workers training by
                     # using separate partitions of the dataset for each worker.
                     continue
+
+                if current_line_num % 100 == 0:
+                    print (current_line_num)
 
                 # when within workers allotted range
                 # read n (prefetch) lines then sort into efficient batches
@@ -155,7 +165,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                                                          "are only partial."
                 if "predicted_spans" in parsed_line:
                     md_spans = [
-                        Span(start=start, ln=end - start, text=text, coarse_type=coarse_type)
+                        Span(start=start, ln=end - start, text=text, coarse_type=coarse_type, is_md_span=True)
                         for start, end, text, coarse_type in parsed_line["predicted_spans"]
                     ]
                     correct_spans(md_spans)
@@ -172,7 +182,11 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                 # TODO pass through candidate_dropout
                 doc = Doc.from_text_with_spans(text, spans, self.preprocessor,
                                                lower_case_prob=self.lower_case_prob, md_spans=md_spans,
-                                               sample_k_candidates=self.sample_k_candidates)
+                                               sample_k_candidates=self.sample_k_candidates,
+                                               start_span_idx=entity_id_counter)
+                # Increment the entity id counter
+                entity_id_counter += len(doc.spans)
+
                 if self.return_docs:
                     # note that this will not prefetch docs
                     # only use this for small-scale evaluation
@@ -182,9 +196,12 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                     # this will clean up the code
                     yield doc
                 else:
+                    # TODO Add id tracking.
                     doc_batch_elements = doc.to_batch_elements(
-                        max_mentions=self.max_mentions, preprocessor=self.preprocessor
+                        max_mentions=self.max_mentions, preprocessor=self.preprocessor,
                     )
+
+                    # TODO how does this affect Galileo ids??
                     if self.mask > 0.0:
                         doc_batch_elements = map(
                             lambda x: mask_mentions(
@@ -221,7 +238,8 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
 
     def __len__(self):
         # approximation of dataset size
-        return self.file_line_count * 2 // self.batch_size
+        #return self.file_line_count * 2 // self.batch_size
+        return self.num_samples
 
     def merge_in_main_entity_mentions(
             self, title: str, spans: List[Span], md_spans: List[Span]

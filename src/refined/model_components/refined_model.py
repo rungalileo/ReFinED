@@ -70,10 +70,12 @@ class RefinedModel(nn.Module):
         )
         self.mention_embedding_dropout = nn.Dropout(config.ner_layer_dropout)
 
+        # TODO CHECK
         self.entity_typing: nn.Module = EntityTyping(
             dropout=config.ner_layer_dropout,
             num_classes=self.num_classes,
-            encoder_hidden_size=self.transformer_config.hidden_size
+            encoder_hidden_size=self.transformer_config.hidden_size,
+            preprocessor=preprocessor
         )
         self.entity_disambiguation: nn.Module = EntityDisambiguation(
             dropout=config.ed_layer_dropout,
@@ -295,9 +297,12 @@ class RefinedModel(nn.Module):
             entity_spans = [span for b in batch_elements for span in b.spans]
             other_spans = {}
 
+        # Along with class targets we just need to get the ids for each of the entities!
         class_targets = self._expand_class_targets(
-            batch.class_target_values, index_tensor=batch.entity_index_mask_values
+            batch.class_target_values, index_tensor=batch.entity_index_mask_values # This is generally a mask of all 1s! So we just take all entity targets
         )
+        # Combine batch and entity axes: (bs, num_ent) -> (bs*(num_ent_per_row))
+        entity_ids = batch.entity_ids[batch.entity_index_mask_values]
 
         mention_embeddings = self._get_mention_embeddings(
             sequence_output=contextualised_embeddings,
@@ -315,7 +320,7 @@ class RefinedModel(nn.Module):
 
         # forward pass of entity typing layer (using predetermined spans if provided else span identified by md layer)
         et_loss, et_activations = self.entity_typing(
-            mention_embeddings=mention_embeddings, span_classes=class_targets
+            mention_embeddings=mention_embeddings, span_classes=class_targets, entity_ids=entity_ids
         )
 
         # forward pass of entity disambiguation layer

@@ -19,12 +19,13 @@ class TrainingArgs:
     class_name: str = 'TrainingArgs'
     experiment_name: str = f'{int(time.time())}'
     device: str = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    el: bool = True  # end-to-end entity linking (MD + ED + ET) when True else
+    # TODO SEE EFFECT OF THIS
+    el: bool = False  # end-to-end entity linking (MD + ED + ET) when True else
     # it will train entity disambiguation (ED) and entity typing (ET)
     ed_dropout: float = 0.05
     et_dropout: float = 0.10
     gradient_accumulation_steps: int = 1
-    epochs: int = 2
+    epochs: int = 1
     lr: float = 5e-5
     batch_size: int = 8  # 8 uses around 12 GB, 16 uses 22 GB (can save space if find GPU process allocating)
     ed_threshold: float = 0.15

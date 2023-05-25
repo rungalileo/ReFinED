@@ -94,6 +94,9 @@ class Span:
     # gold entity (i.e. labelled entity in a dataset) used for model training
     gold_entity: Optional[Entity] = None
 
+    # Signal wether is md_span with weak supervised label
+    is_md_span: Optional[bool] = False
+
     # candidate entities (entities that the model considers)
     # can be manually provided (when providing spans to process_text())
     # or added by the library
@@ -113,4 +116,4 @@ class Span:
     pruned_candidates: Optional[Set[str]] = None
 
     def __repr__(self) -> str:
-        return str([self.text, self.predicted_entity, self.coarse_mention_type])
+        return str([self.text, self.predicted_entity, self.coarse_mention_type, self.is_md_span, self.gold_entity])

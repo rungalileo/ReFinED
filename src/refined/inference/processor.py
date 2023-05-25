@@ -132,6 +132,64 @@ class Refined(object):
             # other handlers can be added here (to parse different entity types)
         }
 
+
+    def custom_process_text(
+            self,
+            doc: Doc,
+            ner_threshold: float = 0.5,
+            prune_ner_types: bool = True,
+            max_batch_size: int = 16,
+            apply_class_check: bool = False,
+            return_special_spans: bool = True,
+    ) -> List[Span]:
+        """
+        Compared to "process_text" use the passed in document rather than re-processing! This is important
+        for id alignment
+
+                Predicts the types and entity for each span (if spans are not provided they will be identified).
+                Performs the preprocessing and batches the text doing multiple forward passes of the network when the
+                batch size exceeds the limit (currently set as 16 with sequence length 300).
+                :param text: the text to process (sentence/document) (will be batched if exceeds max seq)
+                :param spans: optional argument to specify the spans to process.
+                :param ner_threshold: threshold which must be met for the type to be returned (does not affect model - only
+                has an effect on the return ner_type returned from this method)
+                :param prune_ner_types: returns only fine-grained (non-impliable) NER types (does not affect ED)
+                :param max_batch_size: max batch size
+                :param apply_class_check: check the chosen entity has at least one of the predicted fine-grained types
+                :param return_special_spans: if True, return all detected span types (i.e. return DATE spans etc.)
+                :return: a list of spans with predictions attached to each span (sorted by start indices)
+                         or a list of mention dictionary (in distant supervision dataset format) when ds_format is True.
+                """
+        all_spans = []
+
+        tns: Iterable[BatchedElementsTns] = convert_doc_to_tensors(
+            doc,
+            self.preprocessor,
+            collate=True,
+            max_batch_size=max_batch_size,
+            sort_by_tokens=False,
+            max_seq=self.max_seq,
+        )
+        self.model.eval()
+        for batch_idx, batch in enumerate(tns):
+            batch_spans = self.process_tensors(batch=batch, ner_threshold=ner_threshold,
+                                               return_special_spans=return_special_spans)
+            all_spans.extend(batch_spans)
+
+        if prune_ner_types:
+            self._prune_spans_ner(all_spans)
+
+        # when spans are batched they could get shuffled up for batch efficiency
+        # TODO if multiple documents are provided ensure the spans are sorted per doc instead of globally
+        all_spans.sort(key=lambda x: x.start)
+        if apply_class_check:
+            self.preprocessor.class_check_spans(all_spans)
+
+        # can add labels and other entity ids to spans here
+
+        return all_spans
+
+
     def process_text(
             self,
             text: str,
@@ -383,10 +441,13 @@ class Refined(object):
                 if entity_id != 0
             ]
 
-            span.candidate_entities = [
-                (qcode, round(conf, 4))
-                for qcode, conf in filter(lambda x: not x[0] == "Q0", span.candidate_entities)
-            ]
+            # This messes up the future conversion of BatchElements to BatchedElements
+            # because it removes padded "Empty" Candidate entities -> each span can have a different
+            # number of candidate entities.
+            # span.candidate_entities = [
+            #     (qcode, round(conf, 4))
+            #     for qcode, conf in filter(lambda x: not x[0] == "Q0", span.candidate_entities)
+            # ]
             span.description_scores = round_list(
                 description_scores[span_idx].tolist(), 4
             )  # matches candidate order

@@ -130,7 +130,6 @@ class PreprocessorInferenceOnly(Preprocessor):
             inference_only: bool = True,
             return_titles: bool = False,
             max_seq: int = 510,
-            use_mini: bool = False
     ):
         """
         Constructs PreprocessorInferenceOnly object.

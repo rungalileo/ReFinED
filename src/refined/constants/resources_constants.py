@@ -155,22 +155,10 @@ DATA_FILES_WIKIPEDIA = {
         "local_filename": "wikipedia_data/class_to_idx.json",
         "needed_for_inference": True
     },
-    "class_to_idx_mini": {  # NOTE HACKY AND WE USE THE RESOURCE PATH OF EXISTING FILES TO NOT RE_DOWNLOAD
-        "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/class_to_idx.json",
-        "local_filename": "wikipedia_data/mini_class_to_idx.json",
-        "needed_for_inference": True
-    },
     "qcode_to_idx": {
         "s3_bucket": s3_resource_bucket,
         "s3_key": s3_resource_prefix + "wikipedia_data/qcode_to_idx.lmdb",
         "local_filename": "wikipedia_data/qcode_to_idx.lmdb",
-        "needed_for_inference": True
-    },
-    "qcodes_with_labels": {  # NOTE HACKY AND WE USE THE RESOURCE PATH OF EXISTING FILES TO NOT RE_DOWNLOAD
-        "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/qcode_to_idx.lmdb",
-        "local_filename": "wikipedia_data/qcodes_with_labels.json",
         "needed_for_inference": True
     },
     "entity_label_subset": {  # NOTE HACKY AND WE USE THE RESOURCE PATH OF EXISTING FILES TO NOT RE_DOWNLOAD
@@ -183,12 +171,6 @@ DATA_FILES_WIKIPEDIA = {
         "s3_bucket": s3_resource_bucket,
         "s3_key": s3_resource_prefix + "wikipedia_data/qcode_to_class_tns_6269457-138.np",
         "local_filename": "wikipedia_data/qcode_to_class_tns_6269457-138.np",
-        "needed_for_inference": True
-    },
-    "qcode_idx_to_class_mini_idx": {  # NOTE HACKY AND WE USE THE RESOURCE PATH OF EXISTING FILES TO NOT RE_DOWNLOAD
-        "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/qcode_to_class_tns_6269457-138.np",
-        "local_filename": "wikipedia_data/qcode_to_class_tns_6269457-6.np",
         "needed_for_inference": True
     },
     "subclasses": {

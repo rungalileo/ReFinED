@@ -65,11 +65,6 @@ def log_input_data_galileo(
     tasks = [str(idx_to_label_name[idx]) for idx in list(task_ids)]
     dq.set_tasks_for_run(tasks, binary=True)
 
-    # TODO Remove
-    import json
-    with open("tasks.json", 'w') as f:
-        json.dump(tasks, f)
-
     # Loop over the BatchElementTns
     span_texts = []
     spans = []
@@ -100,9 +95,6 @@ def log_input_data_galileo(
                 for j, span in enumerate(batch_element.spans):
                     labels = batch.class_target_values[i][j]
                     labels = labels[labels != 0].numpy()
-                    # TODO Don't Need Dummy label
-                    # labels = ["Q0"] + [str(idx_to_label_name[idx]) for idx in labels]
-                    # TODO Only log labels we are watching
                     labels = [str(idx_to_label_name[idx]) for idx in labels if idx in preprocessor.lookups.label_subset_set]
                     if len(labels) == 0:
                         continue
@@ -116,12 +108,6 @@ def log_input_data_galileo(
 
                     meta_data['doc_id'].append(span.doc_id)
                     meta_data['is_md_span'].append(span.is_md_span)
-
-
-    # TODO REMOVE
-    import pandas as pd
-    df = pd.DataFrame({"text": span_texts, "labels": span_labels, "id": span_ids, "doc_id": meta_data["doc_id"], "span_text": spans})
-    df.to_csv("Musixmatch_Labels_500-550_tiny.csv")
 
     # 🔭🌕 Galileo logging
     dq.log_data_samples(

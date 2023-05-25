@@ -105,6 +105,10 @@ def convert_batch_element_to_tensors(
 
     if num_ents > 0:
         candidate_qcodes = [str(y[0]) for x in batch_element.spans for y in x.candidate_entities]
+        # TODO Remove - Used to catch error where in validation we were creating uneven tensors by cutting down max_candidates
+        if len(candidate_qcodes) != num_ents * max_candidates:
+            print ("ERROR!")
+            print (f"num_ents: {num_ents}, max_c: {max_candidates}, spans: {len(batch_element.spans)}, cand_ent: {[len(x.candidate_entities) for x in batch_element.spans]}")
         candidate_qcodes_ints = np.array(
             list(map(lambda x: int(x.replace("Q", "")), candidate_qcodes))
         ).reshape(num_ents, max_candidates)
@@ -159,11 +163,15 @@ def convert_batch_element_to_tensors(
         dtype=torch.long
     )
 
+    # Extract the new entity ids
+    entity_ids = torch.from_numpy(np.array(batch_element.span_ids))
+
     return BatchElementTns(
         token_id_values,
         token_acc_sum_values,
         entity_mask_values,
         class_target_values,
+        entity_ids,
         attention_mask_values,
         token_type_values,
         candidate_target_values,
@@ -391,6 +399,9 @@ def collate_batch_elements_tns(
     )
     b_ner_labels.fill_(ner_pad_value)
 
+    # Add batch span_ids tensor
+    b_entity_ids = torch.zeros((batch_size, b_num_ents), dtype=torch.long)
+
     for item_idx, batch in enumerate(batch_elements_tns):
         token_ln = batch.token_id_values.size(0)
         entity_mask_ln = batch.entity_mask_values.size(0)
@@ -406,6 +417,9 @@ def collate_batch_elements_tns(
 
         b_pem_values[item_idx, :num_ents] = batch.pem_values
         b_candidate_class_values[item_idx, :num_ents] = batch.candidate_class_values
+
+        # Add span id info
+        b_entity_ids[item_idx, :num_ents] = batch.entity_ids
 
         if b_class_target_values is not None and batch.class_target_values is not None:
             b_class_target_values[item_idx, :num_ents] = batch.class_target_values
@@ -426,6 +440,7 @@ def collate_batch_elements_tns(
         b_token_acc_sum_values,
         b_entity_mask_values,
         b_class_target_values,
+        b_entity_ids,
         b_attention_mask_values,
         b_token_type_values,
         b_candidate_target_values,

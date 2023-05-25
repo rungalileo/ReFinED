@@ -17,7 +17,7 @@ import os
 class LookupsInferenceOnly:
 
     def __init__(self, entity_set: str, data_dir: str, use_precomputed_description_embeddings: bool = True,
-                 return_titles: bool = False):
+                 return_titles: bool = False, use_mini: bool = False):
         self.entity_set = entity_set
         self.data_dir = data_dir
         self.use_precomputed_description_embeddings = use_precomputed_description_embeddings
@@ -34,12 +34,21 @@ class LookupsInferenceOnly:
         # replace all get_file and download_if needed
         # always use resource names that are provided instead of relying on same data_dirs
         # shape = (num_ents, max_num_classes)
-        self.qcode_idx_to_class_idx = np.memmap(
-            resource_to_file_path["qcode_idx_to_class_idx"],
-            shape=get_mmap_shape(resource_to_file_path["qcode_idx_to_class_idx"]),
-            mode="r",
-            dtype=np.int16,
-        )
+        # TODO REMOVE USE MINI!
+        if use_mini:
+            self.qcode_idx_to_class_idx = np.memmap(
+                resource_to_file_path["qcode_idx_to_class_mini_idx"],
+                shape=get_mmap_shape(resource_to_file_path["qcode_idx_to_class_mini_idx"]),
+                mode="r",
+                dtype=np.int16,
+            )
+        else:
+            self.qcode_idx_to_class_idx = np.memmap(
+                resource_to_file_path["qcode_idx_to_class_idx"],
+                shape=get_mmap_shape(resource_to_file_path["qcode_idx_to_class_idx"]),
+                mode="r",
+                dtype=np.int16,
+            )
 
         if not self.use_precomputed_description_embeddings:
             with open(resource_to_file_path["descriptions_tns"], "rb") as f:
@@ -60,8 +69,26 @@ class LookupsInferenceOnly:
 
         self.qcode_to_idx: Mapping[str, int] = LmdbImmutableDict(resource_to_file_path["qcode_to_idx"])
 
-        with open(resource_to_file_path["class_to_idx"], "r") as f:
-            self.class_to_idx = json.load(f)
+        if use_mini:
+            with open(resource_to_file_path["class_to_idx_mini"], "r") as f:
+                self.class_to_idx = json.load(f)
+        else:
+            with open(resource_to_file_path["class_to_idx"], "r") as f:
+                self.class_to_idx = json.load(f)
+
+        # If using mini we will also have a set of qcodes that have > 1 label
+        # to filter for just those spans
+        if use_mini:
+            with open(resource_to_file_path["qcodes_with_labels"], "r") as f:
+                self.qcodes_with_labels = set(json.load(f))
+
+        # TODO CHECK
+        #   Load the set of tasks that we want to log
+        with open(resource_to_file_path["entity_label_subset"], "r") as f:
+            label_subset = json.load(f)
+            # Ensure that the tasks are sorted!
+            self.label_subset_arr = np.sort(np.array(label_subset))
+            self.label_subset_set = set(label_subset)
 
         self.index_to_class = {y: x for x, y in self.class_to_idx.items()}
         self.classes = list(self.class_to_idx.keys())

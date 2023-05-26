@@ -136,9 +136,6 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                     # using separate partitions of the dataset for each worker.
                     continue
 
-                if current_line_num % 100 == 0:
-                    print (current_line_num)
-
                 # when within workers allotted range
                 # read n (prefetch) lines then sort into efficient batches
                 # text and spans to Doc then batch elements

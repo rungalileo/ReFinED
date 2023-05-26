@@ -53,9 +53,8 @@ def process_annotated_document(
             if span.gold_entity is None or span.gold_entity.wikidata_entity_id is None:
                 nil_spans.add((span.text, span.start))
 
-    # TODO BIG HACK!!!!
-    # Consider passing in the spans + span_ids manually!
-    # Allow for both el and ed evaluation!
+
+    # 🔭🌕 Galileo logging
     predicted_spans = refined.custom_process_text(
         doc,
         apply_class_check=apply_class_check,

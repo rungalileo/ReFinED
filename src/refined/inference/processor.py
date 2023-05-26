@@ -132,7 +132,7 @@ class Refined(object):
             # other handlers can be added here (to parse different entity types)
         }
 
-
+    # 🔭🌕 Galileo logging
     def custom_process_text(
             self,
             doc: Doc,
@@ -441,6 +441,7 @@ class Refined(object):
                 if entity_id != 0
             ]
 
+            # 🔭🌕 Galileo logging
             # This messes up the future conversion of BatchElements to BatchedElements
             # because it removes padded "Empty" Candidate entities -> each span can have a different
             # number of candidate entities.

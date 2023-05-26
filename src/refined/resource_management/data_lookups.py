@@ -63,6 +63,7 @@ class LookupsInferenceOnly:
         with open(resource_to_file_path["class_to_idx"], "r") as f:
             self.class_to_idx = json.load(f)
 
+        # 🔭🌕 Galileo logging
         with open(resource_to_file_path["entity_label_subset"], "r") as f:
             label_subset = json.load(f)
             # Ensure that the tasks are sorted!

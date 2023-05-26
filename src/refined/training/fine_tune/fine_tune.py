@@ -150,15 +150,17 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
 
         best_f1 = run_checkpoint_eval_and_save(best_f1, evaluation_dataset_name_to_docs, fine_tuning_args,
                                                refined, optimizer=optimizer, scaler=scaler,
-                                               scheduler=scheduler)
+                                               scheduler=scheduler, log_to_galileo=True)
 
 
 def run_checkpoint_eval_and_save(best_f1: float, evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
                                  fine_tuning_args: TrainingArgs, refined: Refined, optimizer: AdamW,
-                                 scaler: GradScaler,
-                                 scheduler):
+                                 scaler: GradScaler, scheduler, log_to_galileo: bool = False):
     torch.cuda.empty_cache()
     # 🔭🌕 Galileo logging
+    if not log_to_galileo:
+        dq.disable_galileo()
+
     dq.set_split("validation")
     evaluation_metrics = evaluate(refined=refined,
                                   evaluation_dataset_name_to_docs=evaluation_dataset_name_to_docs,
@@ -195,6 +197,7 @@ def run_checkpoint_eval_and_save(best_f1: float, evaluation_dataset_name_to_docs
         torch.save(scheduler.state_dict(), os.path.join(model_output_dir, "scheduler.pt"))
         torch.save(scaler.state_dict(), os.path.join(model_output_dir, "scaler.pt"))
 
+    dq.enable_galileo()
     torch.cuda.empty_cache()
     return best_f1
 

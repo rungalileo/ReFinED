@@ -19,7 +19,6 @@ class TrainingArgs:
     class_name: str = 'TrainingArgs'
     experiment_name: str = f'{int(time.time())}'
     device: str = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    # TODO SEE EFFECT OF THIS
     el: bool = False  # end-to-end entity linking (MD + ED + ET) when True else
     # it will train entity disambiguation (ED) and entity typing (ET)
     ed_dropout: float = 0.05

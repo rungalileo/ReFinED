@@ -30,6 +30,7 @@ class Doc:
     # optional entity-mention spans to process (ET/ED) - can be partial e.g. hyperlinks.
     spans: Optional[List[Span]]
 
+    # 🔭🌕 Galileo logging
     # Unique id for each span - critical for Galileo
     span_ids: Optional[List[int]] = None
 
@@ -109,6 +110,7 @@ class Doc:
                 span.doc_id = doc_id
 
             # Create span_id
+            # 🔭🌕 Galileo logging
             span_ids = list(np.arange(start_span_idx, start_span_idx + len(spans)))
         if md_spans is not None:
             for span in md_spans:
@@ -125,6 +127,7 @@ class Doc:
             )
         return cls(text=text, spans=spans, tokens=tokens, md_spans=md_spans, doc_id=doc_id, span_ids=span_ids)
 
+    # 🔭🌕 Galileo logging
     def to_batch_elements(
             self,
             preprocessor: Preprocessor,

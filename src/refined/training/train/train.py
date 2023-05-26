@@ -68,6 +68,7 @@ def main():
     wikidata_mapper = WikidataMapper(resource_manager=resource_manager)
 
     wikipedia_dataset_file_path = resource_manager.get_training_data_files()['wikipedia_training_dataset']
+
     training_dataset = WikipediaDataset(
         start=100,
         end=500,  #100000000, 150  # large number means every line will be read until the end of the file

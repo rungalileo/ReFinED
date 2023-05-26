@@ -38,7 +38,7 @@ class BatchElementTns(NamedTuple):
     token_acc_sum_values: Optional[Tensor] = None  # shape = (seq_len, )
     entity_mask_values: Optional[Tensor] = None  # shape = (ent_len, )
     class_target_values: Optional[Tensor] = None  # shape = (all_ent_len, max_num_classes_per_ent)
-    # Adding for Galileo
+    # 🔭🌕 Galileo logging
     entity_ids: Optional[Tensor] = None  # shape = (all_ent_len, )
     attention_mask_values: Tensor = None  # shape = (seq_len, )
     token_type_values: Tensor = None  # shape = (seq_len, )
@@ -67,6 +67,7 @@ class BatchedElementsTns(NamedTuple):
     token_acc_sum_values: Optional[Tensor] = None  # shape = (bs, seq_len)
     entity_mask_values: Optional[Tensor] = None  # shape = (bs, ent_len)
     class_target_values: Optional[Tensor] = None  # shape = (all_ent_len, max_num_classes_per_ent)
+    # 🔭🌕 Galileo logging
     entity_ids: Optional[Tensor] = None  # shape = (bs, all_ent_len)
     attention_mask_values: Tensor = None  # shape = (bs, seq_len)
     token_type_values: Tensor = None  # shape = (bs, seq_len)
@@ -127,7 +128,8 @@ class BatchElement:
     # spans used for entity typing and entity disambiguation (could be partial labels)
     spans: Optional[List[Span]]
 
-    # Unique id for each span - critical for Galileo
+    # 🔭🌕 Galileo logging
+    # Unique id for each span
     span_ids: Optional[List[int]]
 
     # text from original document (note: this is the full text of the document)

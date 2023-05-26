@@ -94,7 +94,8 @@ class Span:
     # gold entity (i.e. labelled entity in a dataset) used for model training
     gold_entity: Optional[Entity] = None
 
-    # Signal wether is md_span with weak supervised label
+    # 🔭🌕 Galileo logging
+    # Signal whether is md_span with weak supervised label
     is_md_span: Optional[bool] = False
 
     # candidate entities (entities that the model considers)

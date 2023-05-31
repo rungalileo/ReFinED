@@ -111,7 +111,6 @@ def main():
         random_mask=0.0,
         lower_case_prob=0.0,
         candidate_dropout=0.0,
-        sample_k_candidates=5,
         max_mentions=25,  # prevents memory issues
         add_main_entity=True  # add weak labels,!
     )

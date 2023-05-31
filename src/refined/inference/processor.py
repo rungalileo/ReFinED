@@ -185,15 +185,15 @@ class Refined(object):
         if apply_class_check:
             self.preprocessor.class_check_spans(all_spans)
 
-        # can add labels and other entity ids to spans here
-
         return all_spans
 
-
+    # 🔭🌕 Galileo
+    # Add span ids argument
     def process_text(
             self,
             text: str,
             spans: Optional[List[Span]] = None,
+            span_ids: Optional[List[int]] = None,
             ner_threshold: float = 0.5,
             prune_ner_types: bool = True,
             max_batch_size: int = 16,
@@ -218,7 +218,7 @@ class Refined(object):
         all_spans = []
         if spans is not None:
             doc = Doc.from_text_with_spans(
-                text, spans, self.preprocessor, backward_coref=self.backward_coref
+                text, spans, self.preprocessor, backward_coref=self.backward_coref, span_ids=span_ids
             )
         else:
             doc = Doc.from_text(
@@ -445,10 +445,10 @@ class Refined(object):
             # This messes up the future conversion of BatchElements to BatchedElements
             # because it removes padded "Empty" Candidate entities -> each span can have a different
             # number of candidate entities.
-            # span.candidate_entities = [
-            #     (qcode, round(conf, 4))
-            #     for qcode, conf in filter(lambda x: not x[0] == "Q0", span.candidate_entities)
-            # ]
+            span.candidate_entities = [
+                (qcode, round(conf, 4))
+                for qcode, conf in filter(lambda x: not x[0] == "Q0", span.candidate_entities)
+            ]
             span.description_scores = round_list(
                 description_scores[span_idx].tolist(), 4
             )  # matches candidate order

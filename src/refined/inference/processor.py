@@ -441,10 +441,6 @@ class Refined(object):
                 if entity_id != 0
             ]
 
-            # 🔭🌕 Galileo logging
-            # This messes up the future conversion of BatchElements to BatchedElements
-            # because it removes padded "Empty" Candidate entities -> each span can have a different
-            # number of candidate entities.
             span.candidate_entities = [
                 (qcode, round(conf, 4))
                 for qcode, conf in filter(lambda x: not x[0] == "Q0", span.candidate_entities)

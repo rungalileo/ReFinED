@@ -72,6 +72,8 @@ class Doc:
             doc_id=doc_id
         )
 
+    # 🔭🌕 Galileo
+    # Add span ids
     @classmethod
     def from_text_with_spans(
             cls,
@@ -84,7 +86,7 @@ class Doc:
             backward_coref: bool = False,
             sample_k_candidates: Optional[int] = None,
             doc_id: Optional[int] = None,
-            start_span_idx: Optional[int] = None
+            span_ids: Optional[List[int]] = None,
     ) -> "Doc":
         """
         Construct `Doc` from text with predetermined spans.
@@ -104,14 +106,15 @@ class Doc:
         if doc_id is None:
             doc_id = random.randint(0, 2 ** 30)
 
-        span_ids = None
+        # span_ids = None
         if spans is not None:
             for span in spans:
                 span.doc_id = doc_id
 
-            # Create span_id
-            # 🔭🌕 Galileo logging
-            span_ids = list(np.arange(start_span_idx, start_span_idx + len(spans)))
+            # 🔭🌕 Galileo - check ids are all correct
+            if span_ids is not None:
+                assert len(spans) == len(span_ids)
+
         if md_spans is not None:
             for span in md_spans:
                 span.doc_id = doc_id
@@ -127,7 +130,8 @@ class Doc:
             )
         return cls(text=text, spans=spans, tokens=tokens, md_spans=md_spans, doc_id=doc_id, span_ids=span_ids)
 
-    # 🔭🌕 Galileo logging
+    # 🔭🌕 Galileo
+    # Add span ids to each Batch element
     def to_batch_elements(
             self,
             preprocessor: Preprocessor,
@@ -147,6 +151,7 @@ class Doc:
             # spans are not provided so end-to-end EL is required (the only input is document text)
             return self._to_batch_elements_e2e(preprocessor=preprocessor)
 
+        # TODO: Can this mess up the alignment between spans and span ids
         self.spans.sort(key=lambda x: x.start)
         spans_queue: List[Span] = self.spans[:]
         spans_id_queue: List[int] = self.span_ids[:]
@@ -164,7 +169,7 @@ class Doc:
         current_span: Optional[Span] = None
         # Mirror queue use for spans
         next_span_id: Optional[int] = spans_id_queue.pop(0)
-        current_span_id: Optional[int] = None
+        # current_span_id: Optional[int] = None
 
         if override_max_seq is not None:
             max_seq = override_max_seq
@@ -177,7 +182,7 @@ class Doc:
         in_entity: bool = False  # keeps track of whether the for-loop has started but not finished reading an entity
         sent_spans: List[Span] = []  # keeps track of entities
         # Track the span ids
-        sent_ids: List[int] = []  # keep track of span ids
+        sent_span_ids: List[int] = []  # keep track of span ids
 
         for idx, token in enumerate(self.tokens):
             # process tokens left-to-right
@@ -203,14 +208,14 @@ class Doc:
                         text=self.text,
                         md_spans=self.md_spans,
                         doc_id=self.doc_id,
-                        span_ids=sent_ids
+                        span_ids=sent_span_ids
                     )
                     # add training item to list and set variables for next item
                     batch_elements.append(batch_element)
 
                 sent_tokens = []
                 sent_spans = []
-                sent_ids = []
+                sent_span_ids = []
                 cumm_sum = 0
                 entity_pos = []
                 max_seq = (
@@ -230,7 +235,6 @@ class Doc:
                 # update the next entity to look for
                 if len(spans_queue) == 0:
                     next_span = None
-                    next_span_id = -1
                 else:
                     # if consecutive entities: skip the current entity to ensure distance between current and next is 1
                     # you have entered the (next) entity so set it to current and move next to next entity
@@ -251,7 +255,7 @@ class Doc:
                 )
                 entity_pos.append(cumm_sum)
                 sent_spans.append(current_span)
-                sent_ids.append(current_span_id)
+                sent_span_ids.append(current_span_id)
                 # token has been processed move on to the next token
                 continue
 
@@ -292,7 +296,7 @@ class Doc:
             text=self.text,
             md_spans=self.md_spans,
             doc_id=self.doc_id,
-            span_ids=sent_ids
+            span_ids=sent_span_ids
         )
         batch_elements.append(batch_element)
 

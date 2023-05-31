@@ -3,6 +3,7 @@ import os
 import random
 from typing import List, Optional, Iterator, Set
 
+import numpy as np
 import torch
 
 from refined.data_types.base_types import Entity, Span
@@ -117,6 +118,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
             # workers prefetching at the same time
             self.prefetch = self.prefetch + worker_num * 97
 
+        # 🔭🌕 Galileo
         entity_id_counter = 0
 
         with open(self.dataset_path, "r") as dataset_file:
@@ -176,13 +178,16 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                         title=parsed_line["title"], spans=spans, md_spans=md_spans
                     )
 
+                # 🔭🌕 Galileo
+                # Add unique span ids
+                span_ids = list(np.arange(entity_id_counter, entity_id_counter + len(spans)))
+                # Increment the entity id counter
+                entity_id_counter += len(spans)
                 # TODO pass through candidate_dropout
                 doc = Doc.from_text_with_spans(text, spans, self.preprocessor,
                                                lower_case_prob=self.lower_case_prob, md_spans=md_spans,
                                                sample_k_candidates=self.sample_k_candidates,
-                                               start_span_idx=entity_id_counter)
-                # Increment the entity id counter
-                entity_id_counter += len(doc.spans)
+                                               span_ids=span_ids)
 
                 if self.return_docs:
                     # note that this will not prefetch docs
@@ -193,12 +198,10 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                     # this will clean up the code
                     yield doc
                 else:
-                    # TODO Add id tracking.
                     doc_batch_elements = doc.to_batch_elements(
                         max_mentions=self.max_mentions, preprocessor=self.preprocessor,
                     )
 
-                    # TODO how does this affect Galileo ids??
                     if self.mask > 0.0:
                         doc_batch_elements = map(
                             lambda x: mask_mentions(

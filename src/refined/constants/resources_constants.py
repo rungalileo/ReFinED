@@ -471,9 +471,4 @@ TRAINING_DATA_FILES = {
         "s3_key": s3_resource_prefix + "training_data/wikipedia_links_aligned_spans.json",
         "local_filename": "wikipedia_links_aligned_spans.json"
     },
-    "wikipedia_training_dataset_tiny": {
-        "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "training_data/wikipedia_links_aligned_spans.json",
-        "local_filename": "wikipedia_links_aligned_spans_tiny.json"
-    }
 }

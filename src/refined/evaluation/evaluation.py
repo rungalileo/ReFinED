@@ -25,7 +25,8 @@ def process_annotated_document(
         apply_class_check: bool = False,
         filter_nil: bool = False,  # filter_nil is False for our papers results as this is consistent with previous
         # work. But `filter_nil=False` unfairly penalises predicting new (or unlabelled) entities.
-        return_special_spans: bool = False  # only set to True if the dataset has special spans (e.g. dates)
+        return_special_spans: bool = False,  # only set to True if the dataset has special spans (e.g. dates)
+        log_to_galileo: bool = False
 ) -> Metrics:
     if force_prediction:
         assert ed_threshold == 0.0, "ed_threshold must be set to 0 to force predictions"
@@ -53,21 +54,15 @@ def process_annotated_document(
             if span.gold_entity is None or span.gold_entity.wikidata_entity_id is None:
                 nil_spans.add((span.text, span.start))
 
-
-    # 🔭🌕 Galileo logging
-    predicted_spans = refined.custom_process_text(
-        doc,
+    # 🔭🌕 Galileo
+    predicted_spans = refined.process_text(
+        text=doc.text,
+        spans=doc.spans if not el else None,
+        span_ids=doc.span_ids,  # Note that for el these are not used
         apply_class_check=apply_class_check,
         prune_ner_types=False,
         return_special_spans=return_special_spans  # only set to True if the dataset has special spans (e.g. dates)
     )
-    # predicted_spans = refined.process_text(
-    #     text=doc.text,
-    #     spans=doc.spans if not el else None,
-    #     apply_class_check=apply_class_check,
-    #     prune_ner_types=False,
-    #     return_special_spans=return_special_spans  # only set to True if the dataset has special spans (e.g. dates)
-    # )
 
     pred_spans = set()
     for span in predicted_spans:
@@ -144,7 +139,7 @@ def evaluate_on_docs(
         el: bool = False,
         sample_size: Optional[int] = None,
         filter_nil_spans: bool = False,
-        return_special_spans: bool = False
+        return_special_spans: bool = False,
 ):
     overall_metrics = Metrics.zeros(el=el)
     for doc_idx, doc in tqdm(
@@ -158,7 +153,7 @@ def evaluate_on_docs(
             apply_class_check=apply_class_check,
             el=el,
             filter_nil=filter_nil_spans,
-            return_special_spans=return_special_spans
+            return_special_spans=return_special_spans,
         )
         overall_metrics += doc_metrics
         if sample_size is not None and doc_idx > sample_size:
@@ -262,7 +257,7 @@ def evaluate_on_datasets(refined: Refined,
                          ed_threshold: float = 0.15,
                          return_special_spans: bool = False,  # only set to True if the dataset has special spans (
                          # e.g. dates)
-                         filter_nil_spans: bool = False
+                         filter_nil_spans: bool = False,
                          ):
     dataset_name_to_metrics = dict()
     for dataset_name, dataset_docs in dataset_name_to_docs.items():
@@ -321,9 +316,11 @@ def evaluate(evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
              el: bool = True,
              ed: bool = True,
              print_errors: bool = True,
-             return_special_spans: bool = True) -> Dict[str, Metrics]:
+             return_special_spans: bool = True,
+             log_to_galileo: bool = False) -> Dict[str, Metrics]:
     dataset_name_to_metrics = dict()
     # TODO Support both running el and ed evaluation!
+    # 🔭🌕 Galileo cannot evaluate EL due to missing ids
     if el:
         LOG.info("Running entity linking evaluation")
         el_results = evaluate_on_datasets(
@@ -332,7 +329,7 @@ def evaluate(evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
             el=True,
             ed_threshold=ed_threshold,
             return_special_spans=return_special_spans,
-            filter_nil_spans=True  # makes EL evaluation more fair
+            filter_nil_spans=True,  # makes EL evaluation more fair,
         )
         for dataset_name, metrics in el_results.items():
             dataset_name_to_metrics[f"{dataset_name}-EL"] = metrics
@@ -349,7 +346,7 @@ def evaluate(evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
             dataset_name_to_docs=evaluation_dataset_name_to_docs,
             el=False,
             ed_threshold=ed_threshold,
-            return_special_spans=False
+            return_special_spans=False,
         )
         for dataset_name, metrics in ed_results.items():
             dataset_name_to_metrics[f"{dataset_name}-ED"] = metrics

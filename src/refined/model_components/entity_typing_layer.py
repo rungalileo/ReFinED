@@ -17,6 +17,7 @@ class EntityTyping(nn.Module):
         preprocessor: Optional[PreprocessorInferenceOnly] = None
     ):
         super().__init__()
+        # 🔭🌕 Galileo
         self.preprocessor = preprocessor
         self.dropout = nn.Dropout(dropout)  # not needed
         self.linear = nn.Linear(encoder_hidden_size, num_classes)
@@ -55,10 +56,10 @@ class EntityTyping(nn.Module):
             loss = loss_function(logits, targets)
 
             # 🔭🌕 Galileo logging
-            if self.preprocessor:
+            # Only log if IDs are present
+            if entity_ids is not None:
                 task_mask = self.preprocessor.lookups.label_subset_arr
 
-                # I think we need to detatch here
                 task_specific_logits = logits.detach()[:, task_mask]  # Shape = [batch, task_mask_shape]
                 task_specific_targets = targets.detach()[:, task_mask]
                 # Get the spans that actually have labels!

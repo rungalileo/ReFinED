@@ -163,8 +163,12 @@ def convert_batch_element_to_tensors(
         dtype=torch.long
     )
 
+    # 🔭🌕 Galileo
     # Extract the new entity ids
-    entity_ids = torch.from_numpy(np.array(batch_element.span_ids))
+    if batch_element.span_ids is None:
+        entity_ids = None
+    else:
+        entity_ids = torch.from_numpy(np.array(batch_element.span_ids))
 
     return BatchElementTns(
         token_id_values,
@@ -399,8 +403,12 @@ def collate_batch_elements_tns(
     )
     b_ner_labels.fill_(ner_pad_value)
 
+    # 🔭🌕 Galileo
     # Add batch span_ids tensor
-    b_entity_ids = torch.zeros((batch_size, b_num_ents), dtype=torch.long)
+    if batch_elements_tns[0].entity_ids is None:
+        b_entity_ids = None
+    else:
+        b_entity_ids = torch.zeros((batch_size, b_num_ents), dtype=torch.long)
 
     for item_idx, batch in enumerate(batch_elements_tns):
         token_ln = batch.token_id_values.size(0)
@@ -419,7 +427,8 @@ def collate_batch_elements_tns(
         b_candidate_class_values[item_idx, :num_ents] = batch.candidate_class_values
 
         # Add span id info
-        b_entity_ids[item_idx, :num_ents] = batch.entity_ids
+        if b_entity_ids is not None and batch.entity_ids is not None:
+            b_entity_ids[item_idx, :num_ents] = batch.entity_ids
 
         if b_class_target_values is not None and batch.class_target_values is not None:
             b_class_target_values[item_idx, :num_ents] = batch.class_target_values

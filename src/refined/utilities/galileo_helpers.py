@@ -9,6 +9,7 @@ from refined.utilities.preprocessing_utils import convert_doc_to_tensors
 import dataquality as dq
 
 
+# 🔭🌕 Galileo
 def get_span_context(
     text: str, span_start: int, span_len: int
 ) -> str:
@@ -44,16 +45,14 @@ def get_span_context(
     return span_text_with_context.strip()
 
 
+# 🔭🌕 Galileo
 def log_input_data_galileo(
     dataset: WikipediaDataset,
     preprocessor: PreprocessorInferenceOnly,
     split: str,
     max_batch_size: int
 ) -> None:
-    """Log entity span data with Galileo as MLTC data
-
-
-    """
+    """Log entity span data with Galileo as MLTC data"""
     lookups = preprocessor.lookups
     # Create map from idx --> entity type name. Used for logging readable labels
     # Shift every by one to allow for the dummy 0th class
@@ -71,7 +70,6 @@ def log_input_data_galileo(
     span_labels = []
     span_ids = []
     meta_data = {"doc_id": [], "is_md_span": []}
-    # Why convert to a list?
     for data in dataset:
         # Handle the Validation dataset case where we have must convert documents first
         # to a list of BatchedElementsTns
@@ -114,5 +112,6 @@ def log_input_data_galileo(
         texts=span_texts,
         task_labels=span_labels,
         ids=span_ids,
-        split=split
+        split=split,
+        meta=meta_data
     )

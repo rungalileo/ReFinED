@@ -70,7 +70,7 @@ class RefinedModel(nn.Module):
         )
         self.mention_embedding_dropout = nn.Dropout(config.ner_layer_dropout)
 
-        # TODO CHECK
+        # 🔭🌕 Galileo
         self.entity_typing: nn.Module = EntityTyping(
             dropout=config.ner_layer_dropout,
             num_classes=self.num_classes,
@@ -301,8 +301,12 @@ class RefinedModel(nn.Module):
         class_targets = self._expand_class_targets(
             batch.class_target_values, index_tensor=batch.entity_index_mask_values # This is generally a mask of all 1s! So we just take all entity targets
         )
+        # 🔭🌕 Galileo
         # Combine batch and entity axes: (bs, num_ent) -> (bs*(num_ent_per_row))
-        entity_ids = batch.entity_ids[batch.entity_index_mask_values]
+        if batch.entity_ids is not None:
+            entity_ids = batch.entity_ids[batch.entity_index_mask_values]
+        else:
+            entity_ids = None
 
         mention_embeddings = self._get_mention_embeddings(
             sequence_output=contextualised_embeddings,

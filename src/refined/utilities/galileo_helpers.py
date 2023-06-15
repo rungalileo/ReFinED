@@ -71,6 +71,10 @@ def log_input_data_galileo(
     span_labels = []
     span_ids = []
     meta_data = {"doc_id": [], "is_md_span": [], "entity_id": [], "entity_title": []}
+
+    # To ensure sequential reading of the full dataset, set num_workers to 1
+    num_workers = dataset.num_workers
+    dataset.num_workers = 1
     for data in tqdm(dataset):
         # Handle the Validation dataset case where we have must convert documents first
         # to a list of BatchedElementsTns
@@ -110,7 +114,8 @@ def log_input_data_galileo(
                     meta_data['entity_id'].append(span.gold_entity.wikidata_entity_id)
                     meta_data['entity_title'].append(span.gold_entity.wikipedia_entity_title)
 
-    print (len(span_texts))
+    # Reset num workers
+    dataset.num_workers = num_workers
     # 🔭🌕 Galileo logging
     dq.log_data_samples(
         texts=span_texts,

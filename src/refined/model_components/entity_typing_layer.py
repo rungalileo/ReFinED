@@ -74,6 +74,7 @@ class EntityTyping(nn.Module):
                         logits=task_specific_logits,
                         ids=entity_ids
                     )
+
             return loss, logits.sigmoid()
 
         return None, logits.sigmoid()

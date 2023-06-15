@@ -98,7 +98,7 @@ def main():
 
     eval_dataset = WikipediaDataset(
         start=0,
-        end=10,  # first 100 docs are used for eval
+        end=50,  # first 100 docs are used for eval
         preprocessor=preprocessor,
         resource_manager=resource_manager,
         wikidata_mapper=wikidata_mapper,

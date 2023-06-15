@@ -81,6 +81,13 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
         self.lower_case_prob = lower_case_prob
         self.file_line_count = 6000000  # hard-coded for now to avoid running wc -l on a 50 GB file
 
+        # 🔭🌕 Galileo logging
+        # Maps Document Index -> Starting Span ID
+        # This mapping must be computed sequentially over the dataset
+        # without parallelism, to ensure id alignment during distributed
+        # data loading. This is done during the logging of data to Galileo.
+        self.document_span_id_mapping = {}
+
         if end is None:
             end = self.file_line_count
         else: # To avoid the "massive" end index case
@@ -88,7 +95,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
 
         self.start = start
         self.end = end
-        self.num_samples = end - start
+        self.num_documents = end - start
 
         self.num_workers = num_workers
 
@@ -179,10 +186,18 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                     )
 
                 # 🔭🌕 Galileo
-                # Add unique span ids
-                span_ids = list(np.arange(entity_id_counter, entity_id_counter + len(spans)))
-                # Increment the entity id counter
-                entity_id_counter += len(spans)
+                # Either use the pre-computed id_mapping or compute new continguous ids
+                if current_line_num in self.document_span_id_mapping:
+                    starting_id = self.document_span_id_mapping[current_line_num]
+                    span_ids = list(np.arange(starting_id, starting_id + len(spans)))
+                else:
+                    # Generate new, contiguous, non-overlapping ids
+                    span_ids = list(np.arange(entity_id_counter, entity_id_counter + len(spans)))
+                    # Record the starting id for the document
+                    self.document_span_id_mapping[current_line_num] = entity_id_counter
+                    # Increment the entity id counter
+                    entity_id_counter += len(spans)
+
                 # TODO pass through candidate_dropout
                 doc = Doc.from_text_with_spans(text, spans, self.preprocessor,
                                                lower_case_prob=self.lower_case_prob, md_spans=md_spans,
@@ -238,8 +253,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
 
     def __len__(self):
         # approximation of dataset size
-        #return self.file_line_count * 2 // self.batch_size
-        return self.num_samples
+        return self.num_documents * 2 // self.batch_size
 
     def merge_in_main_entity_mentions(
             self, title: str, spans: List[Span], md_spans: List[Span]

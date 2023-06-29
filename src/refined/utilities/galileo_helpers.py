@@ -16,11 +16,11 @@ def get_span_context(
 ) -> str:
     """Generate a span's text representation for logging with Galileo
 
-    Returns the full sentence that the span appears in with
+    Returns the span + full sentence that the span appears in with
      the span highlighted as <<span>>.
 
     Example:
-        <<England>> won the world cup in 20xx.
+        England: <<England>> won the world cup in 20xx.
     """
     pre_span = text[:span_start]
     # Simple search for canonical punctuation
@@ -40,7 +40,8 @@ def get_span_context(
     # Include the punctuation itself!
     sentance_end += 1
 
-    span_text_with_context = f"{text[sentance_start:span_start]}" \
+    span_text_with_context = f"{text[span_start: span_start+span_len]}: "\
+                             f"{text[sentance_start:span_start]}" \
                              f"<<{text[span_start: span_start+span_len]}>>" \
                              f"{text[span_start+span_len: sentance_end]}"
     return span_text_with_context.strip()

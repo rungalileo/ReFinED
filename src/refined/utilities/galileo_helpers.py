@@ -70,7 +70,7 @@ def log_input_data_galileo(
     spans = []
     span_labels = []
     span_ids = []
-    meta_data = {"doc_id": [], "is_md_span": [], "entity_id": [], "entity_title": []}
+    meta_data = {"doc_id": [], "is_md_span": [], "entity_id": []}
 
     # To ensure sequential reading of the full dataset, set num_workers to 1
     num_workers = dataset.num_workers
@@ -111,8 +111,8 @@ def log_input_data_galileo(
 
                     meta_data['doc_id'].append(span.doc_id)
                     meta_data['is_md_span'].append(span.is_md_span)
-                    meta_data['entity_id'].append(span.gold_entity.wikidata_entity_id)
-                    meta_data['entity_title'].append(span.gold_entity.wikipedia_entity_title)
+                    entity_id = span.gold_entity.wikidata_entity_id or "Q-None"
+                    meta_data['entity_id'].append(entity_id)
 
     # Reset num workers
     dataset.num_workers = num_workers

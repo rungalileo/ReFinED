@@ -16,11 +16,11 @@ def get_span_context(
 ) -> str:
     """Generate a span's text representation for logging with Galileo
 
-    Returns the full sentence that the span appears in with
+    Returns the span + full sentence that the span appears in with
      the span highlighted as <<span>>.
 
     Example:
-        <<England>> won the world cup in 20xx.
+        England: <<England>> won the world cup in 20xx.
     """
     pre_span = text[:span_start]
     # Simple search for canonical punctuation
@@ -40,7 +40,8 @@ def get_span_context(
     # Include the punctuation itself!
     sentance_end += 1
 
-    span_text_with_context = f"{text[sentance_start:span_start]}" \
+    span_text_with_context = f"{text[span_start: span_start+span_len]}: "\
+                             f"{text[sentance_start:span_start]}" \
                              f"<<{text[span_start: span_start+span_len]}>>" \
                              f"{text[span_start+span_len: sentance_end]}"
     return span_text_with_context.strip()
@@ -70,7 +71,7 @@ def log_input_data_galileo(
     spans = []
     span_labels = []
     span_ids = []
-    meta_data = {"doc_id": [], "is_md_span": [], "entity_id": [], "entity_title": []}
+    meta_data = {"doc_id": [], "is_md_span": [], "entity_id": []}
 
     # To ensure sequential reading of the full dataset, set num_workers to 1
     num_workers = dataset.num_workers
@@ -111,8 +112,8 @@ def log_input_data_galileo(
 
                     meta_data['doc_id'].append(span.doc_id)
                     meta_data['is_md_span'].append(span.is_md_span)
-                    meta_data['entity_id'].append(span.gold_entity.wikidata_entity_id)
-                    meta_data['entity_title'].append(span.gold_entity.wikipedia_entity_title)
+                    entity_id = span.gold_entity.wikidata_entity_id or "Q-None"
+                    meta_data['entity_id'].append(entity_id)
 
     # Reset num workers
     dataset.num_workers = num_workers

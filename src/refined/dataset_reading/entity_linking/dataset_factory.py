@@ -1,6 +1,8 @@
 import json
 from typing import Iterable
 
+import numpy as np
+
 from refined.data_types.doc_types import Doc
 from refined.data_types.base_types import Entity, Span
 from refined.doc_preprocessing.preprocessor import Preprocessor
@@ -18,6 +20,68 @@ class Datasets:
         self.datasets_to_files = resource_manager.get_dataset_files()
         self.wikidata_mapper = wikidata_mapper
 
+    # reading podcast dataset
+    def get_podcast_docs(
+            self,
+            split: str,
+    ) -> Iterable[Doc]:
+
+        split_to_name = {
+            "train": "podcast_train",  # add language id to file names
+            "dev": "podcast_dev",
+            "test": "poscast_test",
+        }
+        assert split in split_to_name, "split must be in {train, dev, test}"
+        filename = self.datasets_to_files[f"{split_to_name[split]}-{self.language_id}"]
+
+        # 🔭🌕 Galileo
+        # Global ID tracker
+        entity_id_counter = 0
+
+        with open(filename, "r") as f:
+            data = json.load(f)
+
+            for obj_idx, obj in enumerate(data.keys()):
+                line = data[obj]
+                text = line["text"]
+                spans = []
+                md_spans = []
+                for span in line["hyperlinks_clean"]:
+                    md_spans.append(
+                        Span(
+                            start=span["start"],
+                            ln=span["end"] - span["start"],
+                            text=span["surface_form"],
+                            coarse_type="MENTION"
+                        )
+                    )
+
+                    spans.append(
+                        Span(
+                            start=span["start"],
+                            ln=span["end"] - span["start"],
+                            text=span["surface_form"],
+                            coarse_type="MENTION",
+                            gold_entity=Entity(wikidata_entity_id=span["qcode"], wikipedia_entity_title=span["uri"])
+                        )
+                    )
+
+                if spans is None:
+                    yield Doc.from_text(
+                        text=text,
+                        preprocessor=self.preprocessor
+                    )
+                else:
+                    # 🔭🌕 Galileo
+                    # Generate contiguous, non-overlapping ids
+                    span_ids = list(np.arange(entity_id_counter, entity_id_counter + len(spans)))
+                    # Increment the entity id counter
+                    entity_id_counter += len(spans)
+
+                    yield Doc.from_text_with_spans(
+                        text=text, spans=spans, md_spans=md_spans, preprocessor=self.preprocessor, span_ids=span_ids
+                    )
+
     def get_aida_docs(
             self,
             split: str,
@@ -33,6 +97,11 @@ class Datasets:
         }
         assert split in split_to_name, "split must be in {train, dev, test}"
         filename = self.datasets_to_files[split_to_name[split]]
+
+        # 🔭🌕 Galileo
+        # Global ID tracker
+        entity_id_counter = 0
+
         with open(filename, "r") as f:
             for line_idx, line in enumerate(f):
                 line = json.loads(line)
@@ -109,8 +178,14 @@ class Datasets:
                         preprocessor=self.preprocessor
                     )
                 else:
+                    # 🔭🌕 Galileo
+                    # Generate contiguous, non-overlapping ids
+                    span_ids = list(np.arange(entity_id_counter, entity_id_counter + len(spans)))
+                    # Increment the entity id counter
+                    entity_id_counter += len(spans)
+
                     yield Doc.from_text_with_spans(
-                        text=text, spans=spans, md_spans=md_spans, preprocessor=self.preprocessor
+                        text=text, spans=spans, md_spans=md_spans, preprocessor=self.preprocessor, span_ids=span_ids
                     )
 
     def _read_standard_format(

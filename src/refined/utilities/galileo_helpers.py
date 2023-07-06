@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from refined.data_types.doc_types import Doc
 from refined.data_types.modelling_types import BatchedElementsTns
@@ -49,7 +49,7 @@ def get_span_context(
 
 # 🔭🌕 Galileo
 def log_input_data_galileo(
-    dataset: WikipediaDataset,
+    dataset: Union[WikipediaDataset, List[Doc]],
     preprocessor: PreprocessorInferenceOnly,
     split: str,
     max_batch_size: int,
@@ -57,13 +57,18 @@ def log_input_data_galileo(
     """Log entity span data with Galileo as MLTC data"""
     lookups = preprocessor.lookups
     # Create map from idx --> entity type name. Used for logging readable labels
-    # Shift every by one to allow for the dummy 0th class
-    idx_to_label_name = {idx: lookups.class_to_label[lookups.index_to_class[idx]] for idx in lookups.index_to_class.keys()}
+    idx_to_label_name = {idx: lookups.class_to_label[val] for idx, val in lookups.index_to_class.items()}
 
     # 🔭🌕 Galileo logging
     # Convert the tasks to their string representations
     task_ids = lookups.label_subset_arr
-    tasks = [str(idx_to_label_name[idx]) for idx in list(task_ids)]
+    if task_ids is not None:
+        tasks = [str(idx_to_label_name[idx]) for idx in list(task_ids)]
+    else:  # Log all entity types
+        task_ids = set(lookups.index_to_class.keys())
+        idxs = sorted([idx for idx in task_ids])
+        tasks = [str(idx_to_label_name[idx]) for idx in idxs]
+
     dq.set_tasks_for_run(tasks, binary=True)
 
     # Loop over the BatchElementTns
@@ -71,11 +76,19 @@ def log_input_data_galileo(
     spans = []
     span_labels = []
     span_ids = []
-    meta_data = {"doc_id": [], "is_md_span": [], "entity_id": []}
+    meta_data = {
+        "doc_id": [],
+        "is_md_span": [],
+        "entity_id": [],
+        "wiki_url": [],
+        "wiki_doc_title": []
+    }
 
     # To ensure sequential reading of the full dataset, set num_workers to 1
-    num_workers = dataset.num_workers
-    dataset.num_workers = 1
+    if type(dataset) == WikipediaDataset:
+        num_workers = dataset.num_workers
+        dataset.num_workers = 1
+
     for data in tqdm(dataset):
         # Handle the Validation dataset case where we have must convert documents first
         # to a list of BatchedElementsTns
@@ -99,7 +112,8 @@ def log_input_data_galileo(
                 for j, span in enumerate(batch_element.spans):
                     labels = batch.class_target_values[i][j]
                     labels = labels[labels != 0].numpy()
-                    labels = [str(idx_to_label_name[idx]) for idx in labels if idx in preprocessor.lookups.label_subset_set]
+                    #
+                    labels = [str(idx_to_label_name[idx]) for idx in labels if idx in task_ids]
                     if len(labels) == 0:
                         continue
 
@@ -114,9 +128,15 @@ def log_input_data_galileo(
                     meta_data['is_md_span'].append(span.is_md_span)
                     entity_id = span.gold_entity.wikidata_entity_id or "Q-None"
                     meta_data['entity_id'].append(entity_id)
+                    wiki_url = span.wiki_url or "empty-url"
+                    meta_data['wiki_url'].append(wiki_url)
+                    doc_title = span.doc_title or "no-title"
+                    meta_data['wiki_doc_title'].append(doc_title)
 
     # Reset num workers
-    dataset.num_workers = num_workers
+    if type(dataset) == WikipediaDataset:
+        dataset.num_workers = num_workers
+
     # 🔭🌕 Galileo logging
     dq.log_data_samples(
         texts=span_texts,

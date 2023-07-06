@@ -441,6 +441,7 @@ class Refined(object):
                 if entity_id != 0
             ]
 
+            # 🔭🌕 Galileo Remove if we want to run multiple times over the same dataset
             span.candidate_entities = [
                 (qcode, round(conf, 4))
                 for qcode, conf in filter(lambda x: not x[0] == "Q0", span.candidate_entities)

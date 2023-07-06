@@ -60,9 +60,18 @@ class EntityTyping(nn.Module):
             if entity_ids is not None:
                 task_mask = self.preprocessor.lookups.label_subset_arr
 
-                task_specific_logits = logits.detach()[:, task_mask]  # Shape = [batch, task_mask_shape]
-                task_specific_targets = targets.detach()[:, task_mask]
+                task_specific_logits = logits.detach()
+                task_specific_targets = targets.detach()
+                # Check if we are logging all entity types
+                if task_mask is not None:
+                    task_specific_logits = task_specific_logits[:, task_mask]  # Shape = [batch, task_mask_shape]
+                    task_specific_targets = task_specific_targets[:, task_mask]
+                else:  # Remove the dummy 0 entity type when logging all types
+                    task_specific_logits = task_specific_logits[:, 1:]
+                    task_specific_targets = task_specific_targets[:, 1:]
+
                 # Get the spans that actually have labels!
+                # Note: when we're logging all types, likely all entities will have 1+ entity type.
                 active_spans_mask = torch.where(torch.sum(task_specific_targets, dim=-1) > 0)[0]
                 if active_spans_mask.shape[0] != 0:
                     task_specific_logits = task_specific_logits[active_spans_mask]

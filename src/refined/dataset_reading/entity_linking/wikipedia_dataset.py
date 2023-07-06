@@ -151,6 +151,8 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                 parsed_line = json.loads(dataset_line)
                 ents = parsed_line["hyperlinks_clean"]
                 text = parsed_line["text"]
+                title = parsed_line["title"]
+                wiki_url = parsed_line["url"]
                 spans: List[Span] = []
                 for ent in ents:
                     qcode = ent["qcode"]
@@ -162,7 +164,9 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                             ln=ln,
                             text=text[start_idx: start_idx + ln],
                             gold_entity=Entity(wikidata_entity_id=qcode),
-                            coarse_type="MENTION"
+                            coarse_type="MENTION",
+                            wiki_url=wiki_url,
+                            doc_title=title
                         )
                     )
 
@@ -171,7 +175,15 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                                                          "are only partial."
                 if "predicted_spans" in parsed_line:
                     md_spans = [
-                        Span(start=start, ln=end - start, text=text, coarse_type=coarse_type, is_md_span=True)
+                        Span(
+                            start=start,
+                            ln=end - start,
+                            text=text,
+                            coarse_type=coarse_type,
+                            is_md_span=True,
+                            wiki_url=wiki_url,
+                            doc_title=title
+                        )
                         for start, end, text, coarse_type in parsed_line["predicted_spans"]
                     ]
                     correct_spans(md_spans)
@@ -182,7 +194,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                 # add main entities
                 if self.add_main_entity:
                     spans = self.merge_in_main_entity_mentions(
-                        title=parsed_line["title"], spans=spans, md_spans=md_spans
+                        title=title, spans=spans, md_spans=md_spans
                     )
 
                 # 🔭🌕 Galileo

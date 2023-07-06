@@ -97,6 +97,9 @@ class Span:
     # 🔭🌕 Galileo logging
     # Signal whether is md_span with weak supervised label
     is_md_span: Optional[bool] = False
+    wiki_url: Optional[str] = None
+    # Title of the
+    doc_title: Optional[str] = None
 
     # candidate entities (entities that the model considers)
     # can be manually provided (when providing spans to process_text())

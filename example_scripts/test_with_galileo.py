@@ -35,14 +35,9 @@ def run_batch_inference_job(
     # hard to run multiple times over the dataset.
     evaluation_dataset_name_to_docs = {
         "PODCAST-ENG": list(datasets.get_podcast_docs(
+            # TODO Specify split
             split="dev"
         ))
-        # "AIDA": list(datasets.get_aida_docs(
-        #     split="test",
-        #     include_gold_label=True,
-        #     filter_not_in_kb=True,
-        #     include_spans=True,
-        # ))
     }
     print("Number of documents:", len(evaluation_dataset_name_to_docs['AIDA']))
 
@@ -79,7 +74,6 @@ def main():
     datasets = get_datasets_obj(preprocessor=refined.preprocessor,
                                 download=False,
                                 data_dir=fine_tuning_args.data_dir)
-
 
     # Extract the entity ids that we are logging with Galileo.
     entity_type_ids = refined.preprocessor.lookups.label_subset_arr
